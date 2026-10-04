@@ -2,7 +2,7 @@
 
 Frontend del sistema de mesa de entradas municipal. Incluye el modeler BPMN con el que se dibujan los circuitos de cada trámite.
 
-Backend: [gestor-expedientes-api](https://github.com/Jmurga16/gestor-expedientes-api) · Demo: https://gestor-expedientesv1.azurewebsites.net
+Backend: [gestor-expedientes-api](https://github.com/Jmurga16/gestor-expedientes-api) · Demo: https://traza.devkora.com
 
 ![El modeler BPMN con un carril por área: el circuito que después recorre cada expediente](docs/img/modeler-carriles.png)
 
@@ -76,7 +76,15 @@ npm run build
 
 Deja el sitio en `dist/expedientes-front/browser/`. Es una SPA sin SSR: `src/web.config` reescribe las rutas a `index.html` para que funcione el refresco sobre cualquier ruta en un App Service de Windows.
 
-Se publica subiendo el contenido de esa carpeta a `site/wwwroot`.
+Ese build apunta a Azure y se publica subiendo el contenido de la carpeta a `site/wwwroot` (la versión congelada está en el tag `demo-azure`).
+
+La demo del VPS usa la configuración `vps`, donde la API y los archivos salen del mismo origen (`/api` y `/almacen`):
+
+```bash
+npm run build -- --configuration production,vps
+```
+
+El `Dockerfile` construye esa variante y la sirve con Caddy (`deploy/Caddyfile`). Se publica junto con la API, con el `deploy.sh` de [gestor-expedientes-api](https://github.com/Jmurga16/gestor-expedientes-api).
 
 ## Tests
 
