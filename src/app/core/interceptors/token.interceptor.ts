@@ -10,10 +10,14 @@ export const TokenInterceptor: HttpInterceptorFn = (request, next) => {
     const router = inject(Router);
 
     const token = tokenService.getToken();
-    const isBlobRequest = request.url.includes(environment.azureBlob);
-    const isAuthRequest = request.url.includes('/auth/');
+    const api = new URL(environment.apiUrl, window.location.origin);
+    const target = new URL(request.url, window.location.origin);
+    const apiPath = api.pathname.replace(/\/$/, '');
+    const isApiRequest = target.origin === api.origin
+        && (target.pathname === apiPath || target.pathname.startsWith(apiPath + '/'));
+    const isAuthRequest = isApiRequest && target.pathname.startsWith(apiPath + '/auth/');
 
-    if (token && !isBlobRequest) {
+    if (token && isApiRequest) {
         request = request.clone({
             headers: request.headers.set('Authorization', `Bearer ${token}`)
         });
@@ -21,7 +25,7 @@ export const TokenInterceptor: HttpInterceptorFn = (request, next) => {
 
     return next(request).pipe(
         catchError((error: HttpErrorResponse) => {
-            if (error.status === 401 && token && !isBlobRequest && !isAuthRequest) {
+            if (error.status === 401 && token && isApiRequest && !isAuthRequest) {
                 tokenService.logOut();
                 router.navigate(['auth/login']);
             }

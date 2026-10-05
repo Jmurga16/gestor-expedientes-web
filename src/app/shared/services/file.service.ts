@@ -34,7 +34,7 @@ export class FileService {
     }
 
     resolveUrl(url: string): Observable<string> {
-        if (!url || !url.startsWith(environment.azureBlob))
+        if (!url || url.startsWith('/assets/') || url.startsWith('assets/'))
             return of(url);
 
         return this.http.get<{ url: string }>(`${this._api}/view`, {
