@@ -17,7 +17,8 @@ Cada tipo de trámite municipal tiene un circuito dibujado en BPMN, con un carri
 | Dashboard | totales de expedientes por estado |
 | Bandeja | listado paginado y filtrado por rol, con búsqueda y exportación a Excel |
 | Alta de expediente | si la terna elegida no tiene circuito definido, avisa en el formulario |
-| Diagrama del expediente | el BPMN del expediente, el cambio de paso y estado, y el historial; si está finalizado avisa y no deja guardar |
+| Diagrama del expediente | el BPMN del expediente, el cambio de paso y estado, las observaciones y el historial; si está cerrado avisa y solo el administrador puede reabrirlo |
+| Manual de usuario | reglas de paso, estado, permisos, cierre y reapertura, disponible para todos los roles |
 | Flujos de trabajo | el modeler: dibujar el circuito, agregar carriles por área, descargarlo como `.bpmn` o como PNG |
 | Catálogo | áreas, tipologías y subtipologías |
 | Usuarios | ABM con área y roles |
@@ -53,7 +54,9 @@ Cada módulo repite la misma forma: `common/models`, `common/services`, `pages/`
 
 **Exportar el diagrama como imagen** sale de `saveSVG()` rasterizado en un `<canvas>` a 2×, sin dependencias extra.
 
-**Los pasos del expediente** no vienen de la base: se leen del propio diagrama importado, filtrando las `bpmn:Task`, más `Finalizado` que se agrega siempre al final.
+**Los pasos del expediente** se leen del diagrama, incluidas tareas de usuario y de servicio, más `Inicio` y `Finalizado`. El expediente utiliza un visor sin edición: destaca el paso guardado con el color de su estado, también en el PNG. Al moverlo pide motivo y confirmación; advierte si el destino ya aparece en el historial. No interpreta todavía las flechas ni las condiciones del BPMN.
+
+Los permisos de cada expediente los decide la API (`/demanda/{id}/permisos`); la pantalla solo habilita lo que corresponde. El referente mueve cuando su área es responsable del paso actual, el colaborador agrega observaciones y el administrador es el único que reabre un cerrado. En la bandeja, el lápiz aparece si se pueden editar los datos y la papelera si se puede eliminar. Si otro usuario guardó antes, la API responde `409`: el formulario ofrece recargar y la pantalla de movimientos recarga conservando lo escrito en Observaciones. La clasificación del expediente se mantiene fija para conservar su relación con el circuito.
 
 **El token** se guarda en `localStorage` y lo inyecta un interceptor. Otro interceptor centraliza los errores y distingue el fallo de conexión del error del servidor, así que ningún componente repite el manejo de errores HTTP.
 
