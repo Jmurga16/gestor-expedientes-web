@@ -36,6 +36,8 @@
       </table>
     </div>
     <p>El diagrama del expediente es de consulta. Los administradores diseñan los circuitos desde «Flujos de Trabajo».</p>
+    <p>Cada circuito es <strong>secuencial</strong>: el expediente está en un solo paso a la vez. Las decisiones se dibujan con compuertas exclusivas;
+      al guardar un flujo, el sistema rechaza compuertas paralelas o inclusivas y tareas con más de una salida.</p>
   </section>
 
   <section id="permisos">
@@ -79,7 +81,8 @@
     </ol>
     <p>Se puede pasar a cualquier tarea del circuito, hacia adelante o hacia atrás, porque cada circuito tiene pasos distintos.
       El control está en los permisos y en el registro: el motivo, el usuario y la fecha quedan en el historial.
-      Si vuelve a un paso que ya figura en el historial, se muestra la advertencia «Volver a un paso visitado».</p>
+      Si vuelve a un paso que ya figura en el historial, se muestra la advertencia «Volver a un paso visitado».
+      Si dos tareas del circuito tienen el mismo nombre, el selector agrega el área de cada una para distinguirlas.</p>
     <p>Un cambio de estado sin cambio de paso, por ejemplo de «En tratamiento» a «Pendiente», no exige motivo.
       Si escribe en «Observaciones» sin cambiar paso ni estado, el texto se agrega al historial como observación.
       Los colaboradores ven en esa pantalla el botón «Agregar observación».</p>
