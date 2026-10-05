@@ -16,7 +16,25 @@
 
 .diagram-actions {
     padding: 1rem;
+    flex-wrap: wrap;
 }
+
+.estado-diagrama {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+}
+
+.muestra-estado {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.aviso-paso { padding: 0 1rem; color: #92400e; }
 
 .diagram-container.solo-lectura ::ng-deep {
     .djs-palette,

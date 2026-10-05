@@ -11,12 +11,13 @@ import type Modeling from 'bpmn-js/lib/features/modeling/Modeling';
 import type { Shape } from 'bpmn-js/lib/model/Types';
 import { is } from 'bpmn-js/lib/util/ModelUtil';
 import BpmnJS from 'bpmn-js/lib/Modeler';
+import NavigatedViewer from 'bpmn-js/lib/NavigatedViewer';
 import { FileService } from '../../services/file.service';
 import { NotificationService } from '../../services/notification.service';
 import { IArea } from '../../../modules/area/common/models/area.interface';
 import { AreaService } from '../../../modules/area/common/services/area.service';
 import { FormWorkflowService } from '../../../modules/workflow/common/services/form-workflow.service';
-import { IBpmnProcess } from '../../models/bpmn.interface';
+import { COLORES_ESTADO } from '../../models/estado-expediente';
 
 const PAUSA_ENTRE_CAMBIOS = 200;
 const ESCALA_IMAGEN = 2;
@@ -33,6 +34,8 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
   @Input() url?: string;
   @Input() idDemanda?: number;
   @Input() readonly: boolean = false;
+  @Input() pasoActual?: string;
+  @Input() estadoActual?: number;
   @Output() private importDone: EventEmitter<ImportDoneEvent> = new EventEmitter();
   @Output() fileBPMN = new EventEmitter<File>();
   @Output() pasos = new EventEmitter<string[]>();
@@ -41,7 +44,12 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
 
   idArea = new FormControl<number | null>(null)
 
-  private bpmnJS: BpmnJS = new BpmnJS();
+  private bpmnJS: BpmnJS | NavigatedViewer = new BpmnJS();
+  private viewerMode = false;
+  private coloresOriginales = new Map<SVGElement, { fill: string; stroke: string; width: string }>();
+  avisoPaso = '';
+
+  get colorEstado() { return COLORES_ESTADO[this.estadoActual ?? 0]; }
   private loadSubscription?: Subscription;
   private nombreSubscription?: Subscription;
   private cambiosSubscription?: Subscription;
@@ -71,7 +79,7 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
   }
 
   ngOnInit(): void {
-    this.getAreas()
+    if (!this.readonly && !this.idDemanda) this.getAreas();
 
     this.cambiosSubscription = this.cambios.pipe(debounceTime(PAUSA_ENTRE_CAMBIOS))
       .subscribe(() => this.updateDiagramFile());
@@ -85,6 +93,7 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
     if (changes['url'] && this.url) {
       this.loadUrl(this.url);
     }
+    if (changes['pasoActual'] || changes['estadoActual']) this.pintarPasoActual();
   }
 
   ngOnDestroy(): void {
@@ -98,6 +107,15 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
   }
 
   loadUrl(url: string): void {
+    if ((this.readonly || this.idDemanda) && !this.viewerMode) {
+      this.bpmnJS.destroy();
+      this.bpmnJS = new NavigatedViewer();
+      this.viewerMode = true;
+      if (this.el) this.bpmnJS.attachTo(this.el.nativeElement);
+      this.bpmnJS.on<ImportDoneEvent>('import.done', ({ error }) => {
+        if (!error) this.bpmnJS.get<Canvas>('canvas').zoom('fit-viewport');
+      });
+    }
     this.loadSubscription?.unsubscribe();
     this.loadSubscription = this.fileService.resolveUrl(url).pipe(
       switchMap((signedUrl: string) => this.http.get(signedUrl, { responseType: 'text' })),
@@ -112,11 +130,13 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
   private importDiagram(xml: string): Observable<ImportXMLResult> {
     return from(this.bpmnJS.importXML(xml)).pipe(
       tap(() => {
+        this.coloresOriginales.clear();
         this.updateWorkflowName(this.formWorkflowService.nombreActual);
 
         if (this.idDemanda) {
           this.pasos.emit(this.getPasos());
         }
+        this.pintarPasoActual();
       })
     );
   }
@@ -176,6 +196,7 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
   }
 
   updateDiagramFile() {
+    if (this.readonly || this.idDemanda) return;
     this.bpmnJS.saveXML({ format: true }).then(
       (result) => {
         const xml = result?.xml;
@@ -196,7 +217,7 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
   }
 
   updateWorkflowName(newName: string): void {
-    if (!newName) {
+    if (!newName || this.readonly || this.idDemanda) {
       return;
     }
 
@@ -210,6 +231,7 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
   }
 
   addAreaToWorkflow() {
+    if (this.readonly || this.idDemanda) return;
     const idArea = this.idArea.value;
     if (idArea == null) {
       this.notification.warning('Debe seleccionar un área.');
@@ -267,18 +289,36 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
   }
 
   private getPasos(): string[] {
-    const definitions = this.bpmnJS.getDefinitions();
-    const rootElements: IBpmnProcess[] = definitions?.rootElements ?? [];
-    const processes = rootElements.filter(el => el.$type === 'bpmn:Process');
-
-    if (processes.length === 0) {
+    const tareas = this.getShapes('bpmn:Task').filter(shape => shape.type !== 'label');
+    if (tareas.length === 0) {
       this.notification.warning('El diagrama no tiene pasos definidos.');
-      return [];
     }
+    return [...new Set(tareas.map(task => task.businessObject.name as string).filter(name => !!name?.trim()))];
+  }
 
-    return processes
-      .flatMap(process => process.flowElements ?? [])
-      .filter(element => element.$type === 'bpmn:Task')
-      .map(task => task.name);
+  private pintarPasoActual(): void {
+    this.coloresOriginales.forEach((original, node) => {
+      node.style.fill = original.fill;
+      node.style.stroke = original.stroke;
+      node.style.strokeWidth = original.width;
+    });
+    this.coloresOriginales.clear();
+    this.avisoPaso = '';
+    if (!this.idDemanda || !this.pasoActual || !this.colorEstado || !this.bpmnJS.getDefinitions()) return;
+    const tipo = this.pasoActual === 'Inicio' ? 'bpmn:StartEvent'
+      : this.pasoActual === 'Finalizado' ? 'bpmn:EndEvent' : 'bpmn:Task';
+    const candidatos = this.getShapes(tipo).filter(shape => shape.type !== 'label'
+      && (tipo !== 'bpmn:Task' || shape.businessObject.name === this.pasoActual));
+    if (candidatos.length !== 1) {
+      this.avisoPaso = 'No se puede identificar un único elemento para el paso guardado en este diagrama.';
+      return;
+    }
+    const gfx = this.getElementRegistry().getGraphics(candidatos[0]);
+    const figura = gfx.querySelector<SVGElement>('.djs-visual > :first-child');
+    if (!figura) return;
+    this.coloresOriginales.set(figura, { fill: figura.style.fill, stroke: figura.style.stroke, width: figura.style.strokeWidth });
+    figura.style.fill = this.colorEstado.fondo;
+    figura.style.stroke = this.colorEstado.borde;
+    figura.style.strokeWidth = '3px';
   }
 }

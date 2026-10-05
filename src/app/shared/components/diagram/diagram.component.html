@@ -10,7 +10,12 @@
 </div>
 
 
-<div #ref class="diagram-container" id="bpmn-container" [class.solo-lectura]="readonly"></div>
+<div class="estado-diagrama" *ngIf="idDemanda && colorEstado" aria-live="polite">
+    <span class="muestra-estado" [style.background]="colorEstado.fondo" [style.border-color]="colorEstado.borde"></span>
+    <span>Paso guardado: <strong>{{ pasoActual }}</strong> · {{ colorEstado.nombre }}</span>
+</div>
+<small class="aviso-paso" *ngIf="avisoPaso">{{ avisoPaso }}</small>
+<div #ref class="diagram-container" id="bpmn-container" [class.solo-lectura]="readonly || idDemanda"></div>
 
 <div class="diagram-actions flex gap-3">
     <p-button type="button" label="Descargar BPMN" icon="pi pi-download" (click)="exportDiagram()"></p-button>

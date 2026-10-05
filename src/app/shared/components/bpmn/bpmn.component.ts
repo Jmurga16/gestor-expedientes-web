@@ -11,6 +11,8 @@ export class BpmnComponent {
   @Input() urlBPMN!: string;
   @Input() idDemanda?: number;
   @Input() readonly: boolean = false;
+  @Input() pasoActual?: string;
+  @Input() estadoActual?: number;
   @Output() fileChange = new EventEmitter<File>()
   @Output() pasos = new EventEmitter<string[]>()
 

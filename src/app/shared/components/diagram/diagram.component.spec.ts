@@ -73,14 +73,14 @@ describe('DiagramComponent', () => {
     httpMock.verify();
   });
 
-  async function importarDiagrama(): Promise<void> {
+  async function importarDiagrama(xml = BASE_BPMN): Promise<void> {
     const importDone = component as unknown as { importDone: EventEmitter<ImportDoneEvent> };
     const terminado = firstValueFrom(importDone.importDone);
 
     component.url = URL_BPMN;
     component.ngOnChanges({ url: new SimpleChange(undefined, URL_BPMN, true) });
 
-    httpMock.expectOne(URL_BPMN).flush(BASE_BPMN);
+    httpMock.expectOne(URL_BPMN).flush(xml);
 
     await terminado;
   }
@@ -154,5 +154,37 @@ describe('DiagramComponent', () => {
 
     expect(xml).toContain('name="Reclamo de vecino v2"');
     expect(xml).not.toContain('name="newWorkflow"');
+  });
+
+  it('usa un visor sin modeling y pinta el paso guardado sin modificar el XML', async () => {
+    component.readonly = true;
+    component.idDemanda = 9;
+    component.pasoActual = 'Inicio';
+    component.estadoActual = 4;
+    const archivoEmitido = spyOn(component.fileBPMN, 'emit');
+    await importarDiagrama();
+    fixture.detectChanges();
+
+    const viewer = (component as any).bpmnJS;
+    expect(viewer.get('modeling', false)).toBeFalsy();
+    expect(fixture.nativeElement.querySelector('.djs-palette')).toBeNull();
+    const svg = (await viewer.saveSVG()).svg;
+    expect(svg).toContain('rgb(220, 252, 231)');
+    expect((await viewer.saveXML()).xml).not.toContain('rgb(220, 252, 231)');
+    component.updateWorkflowName('No debe cambiar');
+    expect((await viewer.saveXML()).xml).toContain('name="newWorkflow"');
+    expect(archivoEmitido).not.toHaveBeenCalled();
+  });
+
+  it('incluye tareas de usuario y de servicio en los pasos', async () => {
+    component.idDemanda = 9;
+    const pasosEmitidos = spyOn(component.pasos, 'emit');
+    const xml = BASE_BPMN.replace('</bpmn:process>',
+      '<bpmn:userTask id="Task_User" name="Revisión"/><bpmn:serviceTask id="Task_Service" name="Consulta"/></bpmn:process>')
+      .replace('</bpmndi:BPMNPlane>',
+        '<bpmndi:BPMNShape id="User_di" bpmnElement="Task_User"><dc:Bounds x="330" y="90" width="100" height="80"/></bpmndi:BPMNShape>' +
+        '<bpmndi:BPMNShape id="Service_di" bpmnElement="Task_Service"><dc:Bounds x="460" y="90" width="100" height="80"/></bpmndi:BPMNShape></bpmndi:BPMNPlane>');
+    await importarDiagrama(xml);
+    expect(pasosEmitidos).toHaveBeenCalledWith(['Revisión', 'Consulta']);
   });
 });
