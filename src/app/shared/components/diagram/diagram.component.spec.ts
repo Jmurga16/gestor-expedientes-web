@@ -185,6 +185,29 @@ describe('DiagramComponent', () => {
         '<bpmndi:BPMNShape id="User_di" bpmnElement="Task_User"><dc:Bounds x="330" y="90" width="100" height="80"/></bpmndi:BPMNShape>' +
         '<bpmndi:BPMNShape id="Service_di" bpmnElement="Task_Service"><dc:Bounds x="460" y="90" width="100" height="80"/></bpmndi:BPMNShape></bpmndi:BPMNPlane>');
     await importarDiagrama(xml);
-    expect(pasosEmitidos).toHaveBeenCalledWith(['Revisión', 'Consulta']);
+    expect(pasosEmitidos).toHaveBeenCalledWith([
+      { id: 'Task_User', nombre: 'Revisión', carril: null },
+      { id: 'Task_Service', nombre: 'Consulta', carril: null }
+    ]);
+  });
+
+  it('pinta por ID la tarea guardada aunque haya nombres repetidos', async () => {
+    component.readonly = true;
+    component.idDemanda = 9;
+    component.pasoActual = 'Revisión';
+    component.idPasoActual = 'Task_B';
+    component.estadoActual = 3;
+    const xml = BASE_BPMN.replace('</bpmn:process>',
+      '<bpmn:task id="Task_A" name="Revisión"/><bpmn:task id="Task_B" name="Revisión"/></bpmn:process>')
+      .replace('</bpmndi:BPMNPlane>',
+        '<bpmndi:BPMNShape id="A_di" bpmnElement="Task_A"><dc:Bounds x="330" y="90" width="100" height="80"/></bpmndi:BPMNShape>' +
+        '<bpmndi:BPMNShape id="B_di" bpmnElement="Task_B"><dc:Bounds x="460" y="90" width="100" height="80"/></bpmndi:BPMNShape></bpmndi:BPMNPlane>');
+    await importarDiagrama(xml);
+
+    expect(component.avisoPaso).toBe('');
+    const registro = (component as any).bpmnJS.get('elementRegistry');
+    const figura = (id: string) => registro.getGraphics(id).querySelector('.djs-visual > :first-child') as SVGElement;
+    expect(figura('Task_B').style.stroke).toBe('rgb(67, 56, 202)');
+    expect(figura('Task_A').style.stroke).not.toBe('rgb(67, 56, 202)');
   });
 });

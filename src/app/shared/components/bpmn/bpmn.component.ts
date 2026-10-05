@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import type { ImportDoneEvent } from 'bpmn-js/lib/BaseViewer';
+import { IPasoBpmn } from '../../models/paso-bpmn.interface';
 
 @Component({
   selector: 'app-bpmn',
@@ -12,9 +13,10 @@ export class BpmnComponent {
   @Input() idDemanda?: number;
   @Input() readonly: boolean = false;
   @Input() pasoActual?: string;
+  @Input() idPasoActual?: string | null;
   @Input() estadoActual?: number;
   @Output() fileChange = new EventEmitter<File>()
-  @Output() pasos = new EventEmitter<string[]>()
+  @Output() pasos = new EventEmitter<IPasoBpmn[]>()
 
   importError?: Error;
 
@@ -30,7 +32,7 @@ export class BpmnComponent {
     this.fileChange.emit(file);
   }
 
-  listPasos(pasos: string[]) {
+  listPasos(pasos: IPasoBpmn[]) {
     this.pasos.emit(pasos);
   }
 }

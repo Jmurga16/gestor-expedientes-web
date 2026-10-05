@@ -3,7 +3,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { DemandaWorkflowComponent } from './demanda-workflow.component';
 import { IPermisosDemanda } from '../../common/models/demanda.interface';
+import { IPasoBpmn } from '../../../../shared/models/paso-bpmn.interface';
 
+const PASOS: IPasoBpmn[] = [
+  { id: 'T1', nombre: 'Revisión', carril: 'Obras' },
+  { id: 'T2', nombre: 'Inspección', carril: 'Obras' }
+];
 const PERMISOS: IPermisosDemanda = { mover: true, editar: true, eliminar: true, observar: true, reabrir: false };
 
 describe('DemandaWorkflowComponent: movimientos', () => {
@@ -11,8 +16,8 @@ describe('DemandaWorkflowComponent: movimientos', () => {
   let api: any;
   let notification: any;
 
-  function cargar(estado: number, permisos: Partial<IPermisosDemanda> = {}) {
-    api.getById.and.returnValue(of({ id: 9, paso: 'Revisión', estado, urlBpmn: 'qa.bpmn', version: 2 }));
+  function cargar(estado: number, permisos: Partial<IPermisosDemanda> = {}, idPaso: string | null = 'T1') {
+    api.getById.and.returnValue(of({ id: 9, paso: 'Revisión', idPaso, estado, urlBpmn: 'qa.bpmn', version: 2 }));
     api.getPermisos.and.returnValue(of({ ...PERMISOS, ...permisos }));
     component.idDemanda = 9;
     component.getDemanda();
@@ -33,13 +38,13 @@ describe('DemandaWorkflowComponent: movimientos', () => {
       { get: () => of([]) } as any
     );
     component.ngOnInit();
-    component.listPasos(['Revisión', 'Inspección']);
+    component.listPasos(PASOS);
     cargar(3);
   });
 
   it('no guarda al cancelar el regreso a un paso visitado', async () => {
-    component.pasosVisitados = ['Inicio', 'Inspección', 'Revisión'];
-    component.demandaForm.patchValue({ paso: 'Inspección', observaciones: 'Subsanar revisión' });
+    component.historial = [{ paso: 'Inspección', idPaso: 'T2' }, { paso: 'Revisión', idPaso: 'T1' }] as any;
+    component.demandaForm.patchValue({ paso: 'T2', observaciones: 'Subsanar revisión' });
     notification.confirmWarning.and.resolveTo(false);
     await component.onSubmit();
     expect(notification.confirmWarning.calls.mostRecent().args[0]).toBe('Volver a un paso visitado');
@@ -48,9 +53,9 @@ describe('DemandaWorkflowComponent: movimientos', () => {
   });
 
   it('exige motivo para cambiar de paso y para cerrar', async () => {
-    component.demandaForm.patchValue({ paso: 'Inspección' });
+    component.demandaForm.patchValue({ paso: 'T2' });
     await component.onSubmit();
-    component.demandaForm.patchValue({ paso: 'Revisión', estado: 4 });
+    component.demandaForm.patchValue({ paso: 'T1', estado: 4 });
     await component.onSubmit();
     expect(notification.warning).toHaveBeenCalledTimes(2);
     expect(api.mover).not.toHaveBeenCalled();
@@ -60,7 +65,7 @@ describe('DemandaWorkflowComponent: movimientos', () => {
     component.demandaForm.patchValue({ estado: 4, observaciones: 'Obra terminada' });
     await component.onSubmit();
     expect(notification.confirmWarning.calls.mostRecent().args[0]).toBe('Cerrar expediente');
-    expect(api.mover).toHaveBeenCalledWith(9, { paso: 'Revisión', estado: 4, observaciones: 'Obra terminada', version: 2 });
+    expect(api.mover).toHaveBeenCalledWith(9, { paso: 'Revisión', idPaso: 'T1', estado: 4, observaciones: 'Obra terminada', version: 2 });
   });
 
   it('sin cambios de paso ni estado guarda la observación sin mover', async () => {
@@ -115,7 +120,7 @@ describe('DemandaWorkflowComponent: movimientos', () => {
 
   it('ante un conflicto recarga el expediente y conserva lo escrito', async () => {
     api.mover.and.returnValue(throwError(() => new HttpErrorResponse({ status: 409 })));
-    component.demandaForm.patchValue({ paso: 'Inspección', observaciones: 'Motivo' });
+    component.demandaForm.patchValue({ paso: 'T2', observaciones: 'Motivo' });
     api.getById.calls.reset();
     await component.onSubmit();
     expect(api.getById).toHaveBeenCalled();
@@ -127,9 +132,22 @@ describe('DemandaWorkflowComponent: movimientos', () => {
   });
 
   it('incluye Inicio sin alterar el array del visor', () => {
-    const pasos = ['Revisión'];
+    const pasos = [PASOS[0]];
     component.listPasos(pasos);
-    expect(pasos).toEqual(['Revisión']);
-    expect(component.listTask.map(item => item.id)).toEqual(['Inicio', 'Revisión', 'Finalizado']);
+    expect(pasos).toEqual([PASOS[0]]);
+    expect(component.listTask.map(item => item.id)).toEqual(['Inicio', 'T1', 'Finalizado']);
+  });
+
+  it('distingue tareas con el mismo nombre por su carril y envía el ID elegido', async () => {
+    component.listPasos([...PASOS, { id: 'T3', nombre: 'Revisión', carril: 'Hacienda' }]);
+    expect(component.listTask.map(item => item.nombre)).toEqual(['Inicio', 'Revisión · Obras', 'Inspección', 'Revisión · Hacienda', 'Finalizado']);
+    component.demandaForm.patchValue({ paso: 'T3', observaciones: 'Pasa a Hacienda' });
+    await component.onSubmit();
+    expect(api.mover).toHaveBeenCalledWith(9, jasmine.objectContaining({ paso: 'Revisión', idPaso: 'T3' }));
+  });
+
+  it('un expediente sin ID de paso selecciona la tarea por su nombre', () => {
+    cargar(3, {}, null);
+    expect(component.demandaForm.get('paso')?.value).toBe('T1');
   });
 });

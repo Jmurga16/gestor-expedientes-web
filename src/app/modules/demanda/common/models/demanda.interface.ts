@@ -11,6 +11,7 @@ export interface IDemanda {
   rutaImagen: string | null;
   informacionAdicional: string;
   paso: string;
+  idPaso: string | null;
   urlBpmn: string;
   idsArea: number[];
   idAreaPaso: number | null;
@@ -29,6 +30,7 @@ export interface IPermisosDemanda {
 
 export interface IMovimiento {
   paso: string;
+  idPaso: string | null;
   estado: number;
   observaciones: string | null;
   version: number;

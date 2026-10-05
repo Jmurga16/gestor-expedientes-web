@@ -52,4 +52,4 @@
 </form>
 
 <app-bpmn [urlBPMN]="diagramUrl" *ngIf="diagramUrl!=''" [idDemanda]="idDemanda" [readonly]="true"
-    [pasoActual]="pasoGuardado" [estadoActual]="estadoGuardado" (pasos)="listPasos($event)"></app-bpmn>
+    [pasoActual]="pasoGuardado" [idPasoActual]="idPasoGuardado" [estadoActual]="estadoGuardado" (pasos)="listPasos($event)"></app-bpmn>

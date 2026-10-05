@@ -6,17 +6,31 @@ import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { finalize, forkJoin } from 'rxjs';
 import { DemandaService } from '../../common/services/demanda.service';
 import { IDemanda, IPermisosDemanda } from '../../common/models/demanda.interface';
-import { IDemandaForm } from '../../common/models/demanda-form.interface';
+import { IHistorialDemandaList } from '../../common/models/historial-demanda-list.interface';
 import { HistorialDemandaListModalComponent } from '../historial-demanda-list-modal/historial-demanda-list-modal.component';
 import { IOpcion } from '../../../../shared/models/opcion.interface';
+import { IPasoBpmn } from '../../../../shared/models/paso-bpmn.interface';
 import { DataService } from '../../../../shared/services/data.service';
 import { LoadingService } from '../../../../shared/services/loading.service';
 import { NotificationService } from '../../../../shared/services/notification.service';
 import { ESTADO_FINALIZADO, ESTADOS_TERMINALES } from '../../../../shared/models/estado-expediente';
 import { HistorialDemandaService } from '../../common/services/historial-demanda.service';
 
+const PASO_INICIAL = 'Inicio';
 const PASO_FINAL = 'Finalizado';
 const SIN_PERMISOS: IPermisosDemanda = { mover: false, editar: false, eliminar: false, observar: false, reabrir: false };
+
+interface IOpcionPaso extends IOpcion<string> {
+  paso: string;
+  idPaso: string | null;
+}
+
+interface IFormMovimiento {
+  id: number;
+  paso: string | null;
+  estado: number;
+  observaciones: string | null;
+}
 
 @Component({
   selector: 'app-demanda-workflow',
@@ -31,14 +45,15 @@ export class DemandaWorkflowComponent implements OnInit {
   reabriendo = false;
   permisos: IPermisosDemanda = SIN_PERMISOS;
   pasoGuardado = '';
+  idPasoGuardado: string | null = null;
   estadoGuardado = 1;
   version = 0;
-  pasosVisitados: string[] = [];
+  historial: IHistorialDemandaList[] = [];
   demandaForm: FormGroup;
   idDemanda?: number
   diagramUrl: string = ""
-  pasosBpmn: string[] = []
-  listTask: IOpcion<string>[] = []
+  pasosBpmn: IPasoBpmn[] = []
+  listTask: IOpcionPaso[] = []
   estadosCatalogo: IOpcion[] = []
   listEstadosDemanda: IOpcion[] = []
   ref: DynamicDialogRef | undefined;
@@ -70,6 +85,13 @@ export class DemandaWorkflowComponent implements OnInit {
 
   get puedeGuardar(): boolean {
     return this.puedeMover || this.permisos.observar;
+  }
+
+  get opcionGuardada(): string {
+    if (this.idPasoGuardado)
+      return this.idPasoGuardado;
+    const porNombre = this.listTask.filter(opcion => opcion.paso === this.pasoGuardado);
+    return porNombre.length === 1 ? porNombre[0].id : this.pasoGuardado;
   }
 
   ngOnInit(): void {
@@ -104,15 +126,16 @@ export class DemandaWorkflowComponent implements OnInit {
     this.reabriendo = false;
     this.diagramUrl = demanda.urlBpmn;
     this.pasoGuardado = demanda.paso;
+    this.idPasoGuardado = demanda.idPaso ?? null;
     this.estadoGuardado = demanda.estado;
     this.version = demanda.version ?? 0;
     this.finalizada = ESTADOS_TERMINALES.includes(demanda.estado);
-    this.demandaForm.reset({ id: demanda.id, paso: demanda.paso, estado: demanda.estado, observaciones });
     this.actualizarOpciones();
+    this.demandaForm.reset({ id: demanda.id, paso: this.opcionGuardada, estado: demanda.estado, observaciones });
     this.actualizarControles();
     this.historialService.get(demanda.id).subscribe({
-      next: historial => this.pasosVisitados = historial.map(item => item.paso),
-      error: () => this.pasosVisitados = []
+      next: historial => this.historial = historial,
+      error: () => this.historial = []
     });
   }
 
@@ -131,8 +154,22 @@ export class DemandaWorkflowComponent implements OnInit {
       this.reabriendo
         ? !ESTADOS_TERMINALES.includes(estado.id)
         : estado.id !== ESTADO_FINALIZADO || this.estadoGuardado === ESTADO_FINALIZADO);
-    this.listTask = [...new Set(['Inicio', ...this.pasosBpmn, ...(this.reabriendo ? [] : [PASO_FINAL])])]
-      .filter(paso => !!paso?.trim()).map(paso => ({ id: paso, nombre: paso }));
+
+    const repetidos = new Set(this.pasosBpmn
+      .filter((paso, i) => this.pasosBpmn.findIndex(otro => otro.nombre === paso.nombre) !== i)
+      .map(paso => paso.nombre));
+    const tareas: IOpcionPaso[] = this.pasosBpmn.map(paso => ({
+      id: paso.id,
+      paso: paso.nombre,
+      idPaso: paso.id,
+      nombre: repetidos.has(paso.nombre) ? `${paso.nombre} · ${paso.carril ?? paso.id}` : paso.nombre
+    }));
+    const virtual = (paso: string): IOpcionPaso => ({ id: paso, paso, idPaso: null, nombre: paso });
+    this.listTask = [virtual(PASO_INICIAL), ...tareas, ...(this.reabriendo ? [] : [virtual(PASO_FINAL)])];
+  }
+
+  private opcion(id: string | null): IOpcionPaso | undefined {
+    return this.listTask.find(item => item.id === id);
   }
 
   getEstadosDemanda() {
@@ -148,7 +185,7 @@ export class DemandaWorkflowComponent implements OnInit {
     this.reabriendo = true;
     this.actualizarOpciones();
     this.demandaForm.patchValue({
-      paso: this.pasoGuardado === PASO_FINAL ? null : this.pasoGuardado,
+      paso: this.pasoGuardado === PASO_FINAL ? null : this.opcionGuardada,
       estado: 3
     });
     this.actualizarControles();
@@ -157,7 +194,7 @@ export class DemandaWorkflowComponent implements OnInit {
   cancelarReapertura() {
     this.reabriendo = false;
     this.actualizarOpciones();
-    this.demandaForm.patchValue({ paso: this.pasoGuardado, estado: this.estadoGuardado });
+    this.demandaForm.patchValue({ paso: this.opcionGuardada, estado: this.estadoGuardado });
     this.actualizarControles();
   }
 
@@ -167,25 +204,26 @@ export class DemandaWorkflowComponent implements OnInit {
     });
   }
 
-  validateForm(request: IDemandaForm): boolean {
+  validateForm(request: IFormMovimiento): boolean {
     let message: string = "";
     const motivo = !!request.observaciones?.trim();
+    const destino = this.opcion(request.paso);
 
     if (!request.paso) {
       message = "El campo Paso es requerido."
     } else if (request.estado == null) {
       message = "El campo Estado es requerido."
-    } else if (!this.listTask.some(item => item.id === request.paso)) {
+    } else if (!destino) {
       message = 'Seleccione un paso del circuito BPMN.';
     } else if (!this.listEstadosDemanda.some(item => item.id === request.estado)) {
       message = 'Seleccione un estado válido.';
-    } else if (request.paso === PASO_FINAL && !ESTADOS_TERMINALES.includes(request.estado)) {
+    } else if (destino.paso === PASO_FINAL && !ESTADOS_TERMINALES.includes(request.estado)) {
       message = 'El paso Finalizado requiere un estado de cierre.';
     } else if (this.reabriendo && !motivo) {
       message = 'Indique en Observaciones el motivo de la reapertura.';
     } else if (ESTADOS_TERMINALES.includes(request.estado) && !motivo) {
       message = 'Indique en Observaciones el motivo del cierre.';
-    } else if (request.paso !== this.pasoGuardado && !motivo) {
+    } else if (request.paso !== this.opcionGuardada && !motivo) {
       message = 'Indique en Observaciones el motivo del cambio de paso.';
     }
 
@@ -201,9 +239,9 @@ export class DemandaWorkflowComponent implements OnInit {
       return;
     }
 
-    const request: IDemandaForm = this.demandaForm.getRawValue();
+    const request: IFormMovimiento = this.demandaForm.getRawValue();
     const cambiaMovimiento = this.puedeMover
-      && (request.paso !== this.pasoGuardado || request.estado !== this.estadoGuardado);
+      && (request.paso !== this.opcionGuardada || request.estado !== this.estadoGuardado);
 
     if (!cambiaMovimiento) {
       this.guardarObservacion(request.observaciones?.trim() ?? '');
@@ -214,17 +252,19 @@ export class DemandaWorkflowComponent implements OnInit {
       return;
     }
 
+    const destino = this.opcion(request.paso)!;
     this.saving = true;
-    const cambiaPaso = request.paso !== this.pasoGuardado;
+    const cambiaPaso = request.paso !== this.opcionGuardada;
     const cierra = ESTADOS_TERMINALES.includes(request.estado);
     if (this.reabriendo || cambiaPaso || cierra) {
-      const confirmado = await this.confirmarMovimiento(request, cambiaPaso, cierra);
+      const confirmado = await this.confirmarMovimiento(destino, cambiaPaso, cierra);
       if (!confirmado) { this.saving = false; return; }
     }
     this.loadingService.show();
 
-    this.demandaService.mover(request.id!, {
-      paso: request.paso,
+    this.demandaService.mover(request.id, {
+      paso: destino.paso,
+      idPaso: destino.idPaso,
       estado: request.estado,
       observaciones: request.observaciones?.trim() || null,
       version: this.version
@@ -242,20 +282,26 @@ export class DemandaWorkflowComponent implements OnInit {
       });
   }
 
-  private confirmarMovimiento(request: IDemandaForm, cambiaPaso: boolean, cierra: boolean): Promise<boolean> {
+  private yaVisitado(destino: IOpcionPaso): boolean {
+    return this.historial.some(item => destino.idPaso && item.idPaso
+      ? item.idPaso === destino.idPaso
+      : item.paso === destino.paso);
+  }
+
+  private confirmarMovimiento(destino: IOpcionPaso, cambiaPaso: boolean, cierra: boolean): Promise<boolean> {
     if (this.reabriendo) {
       return this.notification.confirmWarning('Reabrir expediente',
-        `El expediente volverá a «${request.paso}». La reapertura y su motivo quedarán registrados.`,
+        `El expediente volverá a «${destino.nombre}». La reapertura y su motivo quedarán registrados.`,
         'Reabrir expediente');
     }
     if (cierra) {
       return this.notification.confirmWarning('Cerrar expediente',
-        `Se cerrará el expediente en «${request.paso}». Después solo un administrador podrá reabrirlo.`,
+        `Se cerrará el expediente en «${destino.nombre}». Después solo un administrador podrá reabrirlo.`,
         'Cerrar expediente');
     }
-    const regresa = cambiaPaso && this.pasosVisitados.includes(request.paso);
+    const regresa = cambiaPaso && this.yaVisitado(destino);
     return this.notification.confirmWarning(regresa ? 'Volver a un paso visitado' : 'Cambiar paso',
-      `Pasará de «${this.pasoGuardado}» a «${request.paso}». ${regresa ? 'Este paso ya figura en el historial. ' : ''}El movimiento y su motivo quedarán registrados.`,
+      `Pasará de «${this.pasoGuardado}» a «${destino.nombre}». ${regresa ? 'Este paso ya figura en el historial. ' : ''}El movimiento y su motivo quedarán registrados.`,
       'Confirmar movimiento');
   }
 
@@ -286,9 +332,12 @@ export class DemandaWorkflowComponent implements OnInit {
     }
   }
 
-  listPasos(pasos: string[]) {
+  listPasos(pasos: IPasoBpmn[]) {
+    const seleccion = this.demandaForm.get('paso')?.value;
     this.pasosBpmn = [...pasos];
     this.actualizarOpciones();
+    if (!this.reabriendo && (seleccion == null || seleccion === this.pasoGuardado))
+      this.demandaForm.patchValue({ paso: this.opcionGuardada });
   }
 
   openModalHistorial() {

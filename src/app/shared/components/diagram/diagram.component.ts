@@ -18,6 +18,7 @@ import { IArea } from '../../../modules/area/common/models/area.interface';
 import { AreaService } from '../../../modules/area/common/services/area.service';
 import { FormWorkflowService } from '../../../modules/workflow/common/services/form-workflow.service';
 import { COLORES_ESTADO } from '../../models/estado-expediente';
+import { IPasoBpmn } from '../../models/paso-bpmn.interface';
 
 const PAUSA_ENTRE_CAMBIOS = 200;
 const ESCALA_IMAGEN = 2;
@@ -35,10 +36,11 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
   @Input() idDemanda?: number;
   @Input() readonly: boolean = false;
   @Input() pasoActual?: string;
+  @Input() idPasoActual?: string | null;
   @Input() estadoActual?: number;
   @Output() private importDone: EventEmitter<ImportDoneEvent> = new EventEmitter();
   @Output() fileBPMN = new EventEmitter<File>();
-  @Output() pasos = new EventEmitter<string[]>();
+  @Output() pasos = new EventEmitter<IPasoBpmn[]>();
 
   listArea: IArea[] = [];
 
@@ -93,7 +95,7 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
     if (changes['url'] && this.url) {
       this.loadUrl(this.url);
     }
-    if (changes['pasoActual'] || changes['estadoActual']) this.pintarPasoActual();
+    if (changes['pasoActual'] || changes['idPasoActual'] || changes['estadoActual']) this.pintarPasoActual();
   }
 
   ngOnDestroy(): void {
@@ -288,12 +290,17 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
     return this.bpmnJS.get<Modeling>('modeling');
   }
 
-  private getPasos(): string[] {
+  private getPasos(): IPasoBpmn[] {
     const tareas = this.getShapes('bpmn:Task').filter(shape => shape.type !== 'label');
     if (tareas.length === 0) {
       this.notification.warning('El diagrama no tiene pasos definidos.');
     }
-    return [...new Set(tareas.map(task => task.businessObject.name as string).filter(name => !!name?.trim()))];
+    const carriles = new Map<string, string>();
+    this.getShapes('bpmn:Lane').forEach(lane => (lane.businessObject.flowNodeRef ?? [])
+      .forEach((nodo: { id: string }) => carriles.set(nodo.id, lane.businessObject.name ?? '')));
+    return tareas
+      .filter(task => !!(task.businessObject.name as string)?.trim())
+      .map(task => ({ id: task.businessObject.id, nombre: task.businessObject.name, carril: carriles.get(task.businessObject.id) || null }));
   }
 
   private pintarPasoActual(): void {
@@ -307,7 +314,8 @@ export class DiagramComponent implements AfterContentInit, OnChanges, OnDestroy,
     if (!this.idDemanda || !this.pasoActual || !this.colorEstado || !this.bpmnJS.getDefinitions()) return;
     const tipo = this.pasoActual === 'Inicio' ? 'bpmn:StartEvent'
       : this.pasoActual === 'Finalizado' ? 'bpmn:EndEvent' : 'bpmn:Task';
-    const candidatos = this.getShapes(tipo).filter(shape => shape.type !== 'label'
+    const porId = this.idPasoActual ? this.getElementRegistry().get(this.idPasoActual) as Shape | undefined : undefined;
+    const candidatos = porId ? [porId] : this.getShapes(tipo).filter(shape => shape.type !== 'label'
       && (tipo !== 'bpmn:Task' || shape.businessObject.name === this.pasoActual));
     if (candidatos.length !== 1) {
       this.avisoPaso = 'No se puede identificar un único elemento para el paso guardado en este diagrama.';
