@@ -1,7 +1,16 @@
 <form [formGroup]="demandaForm" autocomplete="off" (ngSubmit)="onSubmit()">
-    <div class="aviso-finalizada" *ngIf="finalizada">
+    <div class="aviso-finalizada" *ngIf="finalizada && !reabriendo">
         <i class="pi pi-lock"></i>
-        <span>El expediente está finalizado, ya no admite cambios de paso ni de estado.</span>
+        <span>El expediente está cerrado, ya no admite cambios de paso ni de estado.</span>
+        <p-button *ngIf="permisos.reabrir" type="button" label="Reabrir expediente" icon="pi pi-replay"
+            severity="warning" size="small" (onClick)="reabrir()"></p-button>
+    </div>
+
+    <div class="aviso-finalizada" *ngIf="reabriendo">
+        <i class="pi pi-replay"></i>
+        <span>Elija el paso y el estado con los que vuelve a tramitarse, e indique el motivo.</span>
+        <p-button type="button" label="Cancelar" severity="secondary" size="small" [text]="true"
+            (onClick)="cancelarReapertura()"></p-button>
     </div>
 
     <div class="p-fluid p-formgrid grid">
@@ -17,10 +26,12 @@
         </div>
     </div>
 
-    <div class="p-fluid p-formgrid grid" *ngIf="!(currentRol=='usuario')">
+    <div class="p-fluid p-formgrid grid" *ngIf="puedeGuardar">
         <div class="field col-12 md:col-12">
             <label htmlFor="observaciones">Observaciones</label>
-            <textarea pInputTextarea id="observaciones" formControlName="observaciones" rows="3"></textarea>
+            <textarea pInputTextarea id="observaciones" formControlName="observaciones" rows="3" maxlength="1000"></textarea>
+            <small *ngIf="puedeMover">Obligatorio para cambiar de paso, cerrar o reabrir. Sin cambios de paso ni estado, se guarda como observación en el historial.</small>
+            <small *ngIf="!puedeMover">Se agrega al historial del expediente sin cambiar su paso ni su estado.</small>
         </div>
     </div>
 
@@ -29,8 +40,8 @@
             <p-button type="button" label="Atrás" icon="pi pi-arrow-left" severity="secondary" (onClick)="goToBack()"></p-button>
         </div>
 
-        <div class="btn-custom" style="margin-right: 1rem;" *ngIf="!(currentRol=='usuario') && !finalizada">
-            <p-button type="submit" label="Guardar" [disabled]="saving" [loading]="saving"></p-button>
+        <div class="btn-custom" style="margin-right: 1rem;" *ngIf="puedeGuardar">
+            <p-button type="submit" [label]="puedeMover ? 'Guardar' : 'Agregar observación'" [disabled]="saving" [loading]="saving"></p-button>
         </div>
 
         <div class="btn-custom">
@@ -40,4 +51,5 @@
 
 </form>
 
-<app-bpmn [urlBPMN]="diagramUrl" *ngIf="diagramUrl!=''" [idDemanda]="idDemanda" (pasos)="listPasos($event)"></app-bpmn>
+<app-bpmn [urlBPMN]="diagramUrl" *ngIf="diagramUrl!=''" [idDemanda]="idDemanda" [readonly]="true"
+    [pasoActual]="pasoGuardado" [estadoActual]="estadoGuardado" (pasos)="listPasos($event)"></app-bpmn>

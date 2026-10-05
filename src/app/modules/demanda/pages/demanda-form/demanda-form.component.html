@@ -43,6 +43,11 @@
             <div class="div">
                 <h5>Información Demanda</h5>
 
+                <div class="aviso-lectura" *ngIf="readonly">
+                    <i class="pi pi-eye"></i>
+                    <span>Solo lectura: los datos los corrige el administrador o el área responsable del paso actual.</span>
+                </div>
+
                 <div class="p-fluid p-formgrid grid">
                     <div class="field col-12 md:col-6">
                         <label htmlFor="caratula">Caratula</label>
@@ -115,7 +120,7 @@
                     </div>
                 </div>
 
-                <div class="p-fluid p-formgrid grid">
+                <div class="p-fluid p-formgrid grid" *ngIf="!readonly">
                     <div class="field col-12 md:col-12">
                         <p-fileUpload mode="basic" name="file" customUpload="true"
                             (uploadHandler)="onUploadImage($event)" accept="image/*" maxFileSize="1000000" [auto]="true"
@@ -136,7 +141,7 @@
             </div>
 
             <div class="footer">
-                <p-button type="submit" label="Guardar" [disabled]="saving" [loading]="saving"></p-button>
+                <p-button *ngIf="!readonly" type="submit" label="Guardar" [disabled]="saving" [loading]="saving"></p-button>
                 <p-button type="button" label="Salir" styleClass="p-button-danger" (onClick)="goToBack()"></p-button>
             </div>
         </form>

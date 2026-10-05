@@ -13,4 +13,5 @@ export interface IDemandaForm {
   urlBpmn: string;
   observaciones?: string | null;
   estado: number;
+  version?: number | null;
 }

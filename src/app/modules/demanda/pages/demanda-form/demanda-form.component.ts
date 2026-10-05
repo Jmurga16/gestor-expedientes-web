@@ -2,9 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { finalize } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 import { DemandaService } from '../../common/services/demanda.service';
-import { IDemanda } from '../../common/models/demanda.interface';
 import { IDemandaForm } from '../../common/models/demanda-form.interface';
 import { ITipologia } from '../../../tipologia/common/models/tipologia.interface';
 import { ISubtipologia } from '../../../tipologia/common/models/subtipologia.interface';
@@ -92,7 +91,8 @@ export class DemandaFormComponent implements OnInit {
       paso: ['Inicio'],
       urlBpmn: ['/assets/demo/base.bpmn'],
 
-      estado: [1]
+      estado: [1],
+      version: [null]
     });
 
   }
@@ -164,9 +164,16 @@ export class DemandaFormComponent implements OnInit {
   }
 
   getDemanda() {
-    this.demandaService.getById(this.idDemanda!).subscribe({
-      next: (response: IDemanda) => {
+    forkJoin({
+      demanda: this.demandaService.getById(this.idDemanda!),
+      permisos: this.demandaService.getPermisos(this.idDemanda!)
+    }).subscribe({
+      next: ({ demanda: response, permisos }) => {
         this.demandaForm.patchValue(response);
+        ['idTipoDemanda', 'idTipologia', 'idSubtipologia'].forEach(campo => this.demandaForm.get(campo)?.disable());
+        this.readonly = !permisos.editar;
+        if (this.readonly)
+          this.demandaForm.disable();
         this.loadImagenPreview(response.rutaImagen);
         this.loading = false;
       },
@@ -228,7 +235,7 @@ export class DemandaFormComponent implements OnInit {
   }
 
   onSubmit() {
-    if (this.saving) {
+    if (this.saving || this.readonly) {
       return;
     }
 
@@ -260,6 +267,16 @@ export class DemandaFormComponent implements OnInit {
   private handleSaveError(error: HttpErrorResponse) {
     if (error.error?.code === WORKFLOW_NOT_CONFIGURED) {
       this.showWorkflowNotConfigured(error.error.message);
+    } else if (error.status === 409) {
+      this.notification.confirmWarning(
+        'El expediente cambió',
+        'Otro usuario lo modificó mientras usted lo editaba. Puede recargar los datos actuales o quedarse en esta pantalla para copiar sus cambios.',
+        'Recargar datos'
+      ).then(confirmado => {
+        if (confirmado) {
+          this.getDemanda();
+        }
+      });
     }
   }
 

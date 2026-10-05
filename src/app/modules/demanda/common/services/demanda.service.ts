@@ -5,7 +5,7 @@ import { environment } from '../../../../../environments/environment';
 import { IPaginatedList } from '../../../../core/models/generic/paginated-list.interface';
 import { IPaginatedFilter } from '../../../../core/models/generic/paginated-filter.interface';
 import { IMessage } from '../../../../core/models/generic/message.interface';
-import { IDemanda, IDemandaCreada, IDemandaList } from '../models/demanda.interface';
+import { IDemanda, IDemandaCreada, IDemandaList, IMovimiento, IPermisosDemanda } from '../models/demanda.interface';
 import { IDemandaForm } from '../models/demanda-form.interface';
 
 @Injectable({
@@ -47,6 +47,18 @@ export class DemandaService {
 
   update(request: IDemandaForm): Observable<IMessage> {
     return this.http.put<IMessage>(`${this._api}/${request.id}`, request);
+  }
+
+  getPermisos(id: number): Observable<IPermisosDemanda> {
+    return this.http.get<IPermisosDemanda>(`${this._api}/${id}/permisos`);
+  }
+
+  mover(id: number, movimiento: IMovimiento): Observable<IMessage> {
+    return this.http.post<IMessage>(`${this._api}/${id}/movimiento`, movimiento);
+  }
+
+  observar(id: number, observaciones: string): Observable<IMessage> {
+    return this.http.post<IMessage>(`${this._api}/${id}/observacion`, { observaciones });
   }
 
   delete(id: number): Observable<IMessage> {

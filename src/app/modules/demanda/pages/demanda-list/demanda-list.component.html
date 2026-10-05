@@ -91,15 +91,16 @@
                     {{demanda.estado | steptask}}
                 </td>
                 <td class="col-opciones text-center">
-                    <button pButton pRipple type="button" icon="pi pi-pencil" (click)="goToEdit(demanda.id)"
-                        pTooltip="Editar" class="p-button-rounded p-button-text p-button-tbl">
+                    <button pButton pRipple type="button" [icon]="demanda.puedeEditar ? 'pi pi-pencil' : 'pi pi-eye'"
+                        (click)="goToEdit(demanda.id)" [pTooltip]="demanda.puedeEditar ? 'Editar' : 'Ver datos'"
+                        class="p-button-rounded p-button-text p-button-tbl">
                     </button>
 
                     <button pButton pRipple type="button" icon="pi pi-sitemap" (click)="goToDiagram(demanda.id)"
                         pTooltip="Ver diagrama" class="p-button-rounded p-button-text p-button-tbl">
                     </button>
 
-                    <button pButton pRipple type="button" icon="pi pi-trash" (click)="deleteById(demanda.id)"
+                    <button *ngIf="demanda.puedeEliminar" pButton pRipple type="button" icon="pi pi-trash" (click)="deleteById(demanda.id)"
                         pTooltip="Eliminar" class="p-button-rounded p-button-text p-button-tbl">
                     </button>
                 </td>

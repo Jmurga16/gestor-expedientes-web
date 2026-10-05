@@ -13,8 +13,25 @@ export interface IDemanda {
   paso: string;
   urlBpmn: string;
   idsArea: number[];
+  idAreaPaso: number | null;
   fechaCreacion: string;
   estado: number;
+  version: number;
+}
+
+export interface IPermisosDemanda {
+  mover: boolean;
+  editar: boolean;
+  eliminar: boolean;
+  observar: boolean;
+  reabrir: boolean;
+}
+
+export interface IMovimiento {
+  paso: string;
+  estado: number;
+  observaciones: string | null;
+  version: number;
 }
 
 export interface IDemandaCreada extends IMessage {
@@ -33,4 +50,6 @@ export interface IDemandaList {
   tipologia: string;
   subtipologia: string;
   estado: number;
+  puedeEditar: boolean;
+  puedeEliminar: boolean;
 }
