@@ -10,6 +10,10 @@ const routes: Routes = [
     component: LayoutComponent,
     children: [
       {
+        path: 'manual',
+        loadComponent: () => import('../../../shared/components/manual/manual.component').then(m => m.ManualComponent)
+      },
+      {
         path: '',
         redirectTo: 'home',
         pathMatch: 'full',

@@ -1,0 +1,119 @@
+<article class="manual" aria-labelledby="manual-title">
+  <header>
+    <span class="eyebrow">AYUDA · TRAZA</span>
+    <h1 id="manual-title">Manual de usuario</h1>
+    <p>Cómo registrar, consultar y gestionar un expediente, desde su recepción hasta el cierre.</p>
+    <small>Reglas acordadas · Actualizado el 4 de octubre de 2026</small>
+  </header>
+
+  <nav aria-label="Contenido del manual">
+    <a href="#conceptos" (click)="irA($event, 'conceptos')">Paso y estado</a>
+    <a href="#permisos" (click)="irA($event, 'permisos')">Permisos</a>
+    <a href="#crear" (click)="irA($event, 'crear')">Registrar</a>
+    <a href="#movimientos" (click)="irA($event, 'movimientos')">Mover y observar</a>
+    <a href="#cierre" (click)="irA($event, 'cierre')">Cerrar y reabrir</a>
+    <a href="#consulta" (click)="irA($event, 'consulta')">Consultar y descargar</a>
+  </nav>
+
+  <section id="conceptos">
+    <h2>1. Paso y estado: qué significa cada uno</h2>
+    <p>El <strong>paso</strong> indica dónde está el expediente en el circuito, por ejemplo «Relevamiento técnico».
+      El <strong>estado</strong> indica su situación, por ejemplo «Pendiente». Un expediente puede estar pendiente en diferentes pasos.</p>
+    <p>El diagrama destaca el paso y estado <strong>ya guardados</strong>. Elegir otra opción en el formulario no modifica el expediente hasta guardar y confirmar.</p>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Estados del expediente">
+      <table>
+        <caption>Estados y significado de los colores</caption>
+        <thead><tr><th scope="col">Estado</th><th scope="col">Color</th><th scope="col">Uso</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Receptada</th><td><span class="dot recibida"></span>Azul</td><td>Estado inicial al registrar un expediente.</td></tr>
+          <tr><th scope="row">En tratamiento</th><td><span class="dot tratamiento"></span>Índigo</td><td>El expediente está siendo atendido.</td></tr>
+          <tr><th scope="row">Pendiente</th><td><span class="dot pendiente"></span>Naranja</td><td>Espera una actuación, información o respuesta.</td></tr>
+          <tr><th scope="row">Suspendido</th><td><span class="dot suspendido"></span>Ámbar</td><td>La tramitación está pausada. No equivale a un cierre.</td></tr>
+          <tr><th scope="row">Cerrado y Resuelto</th><td><span class="dot resuelto"></span>Verde</td><td>Cierre con resolución. Exige motivo y no admite movimientos posteriores.</td></tr>
+          <tr><th scope="row">Cerrado sin Resolución</th><td><span class="dot sin-resolucion"></span>Rojo</td><td>Cierre sin resolución. Exige indicar la causa y no admite movimientos posteriores.</td></tr>
+          <tr><th scope="row">Finalizado</th><td><span class="dot finalizado"></span>Turquesa</td><td>Estado de cierre anterior, ya no se ofrece. Los expedientes que lo tienen siguen cerrados.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>El diagrama del expediente es de consulta. Los administradores diseñan los circuitos desde «Flujos de Trabajo».</p>
+  </section>
+
+  <section id="permisos">
+    <h2>2. Quién puede gestionar un expediente</h2>
+    <p>Cada tarea del circuito pertenece al carril de un área. Esa área es la <strong>responsable del paso actual</strong>.
+      El paso «Inicio» corresponde al área de la primera tarea del circuito.</p>
+    <div class="table-scroll" tabindex="0" role="region" aria-label="Permisos por rol">
+      <table>
+        <caption>Alcance por rol</caption>
+        <thead><tr><th scope="col">Rol</th><th scope="col">Consulta</th><th scope="col">Mover y cerrar</th><th scope="col">Datos y bajas</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Administrador</th><td>Todos los expedientes; administra usuarios, catálogos y circuitos.</td><td>Sí. Es el único que puede reabrir un expediente cerrado.</td><td>Corrige datos siempre. Elimina expedientes abiertos.</td></tr>
+          <tr><th scope="row">Referente</th><td>Expedientes de circuitos que incluyen su área y expedientes propios.</td><td>Solo si su área es la responsable del paso actual. Al pasarlo a otra área, la responsabilidad pasa a esa área.</td><td>Corrige datos mientras su área es la responsable. No elimina.</td></tr>
+          <tr><th scope="row">Colaborador</th><td>Expedientes de circuitos que incluyen su área y expedientes propios.</td><td>No. Puede agregar observaciones al historial.</td><td>No.</td></tr>
+          <tr><th scope="row">Vecino / usuario</th><td>Sus propios expedientes.</td><td>No.</td><td>Corrige o elimina su pedido solo mientras sigue en «Inicio» y «Receptada».</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Si un circuito no tiene carriles por área, cualquier referente de un área que participe en él puede mover el expediente.</p>
+  </section>
+
+  <section id="crear">
+    <h2>3. Registrar un expediente</h2>
+    <ol>
+      <li>Abra «Demandas» y pulse «Nuevo».</li>
+      <li>Seleccione tipo de demanda, tipología y subtipología. Complete el domicilio y los datos del pedido; puede adjuntar una imagen.</li>
+      <li>Si se indica que falta un flujo de trabajo, solicite al administrador que configure o active el circuito correspondiente.</li>
+      <li>Pulse «Guardar». El sistema asigna la carátula y registra el expediente en el paso «Inicio», estado «Receptada».</li>
+    </ol>
+    <p>La clasificación elegida determina el circuito y no se puede cambiar al editar el expediente. Los cambios posteriores a una plantilla no alteran el circuito de los expedientes ya creados.</p>
+  </section>
+
+  <section id="movimientos">
+    <h2>4. Avanzar, volver u observar</h2>
+    <ol>
+      <li>Desde la bandeja, abra «Ver diagrama» en el expediente.</li>
+      <li>Seleccione el paso de destino y el estado que corresponda.</li>
+      <li>Al cambiar de paso, escriba el motivo en «Observaciones».</li>
+      <li>Pulse «Guardar» y revise el origen y el destino en la confirmación.</li>
+      <li>Confirme el movimiento o pulse «Cancelar» para mantener los datos guardados.</li>
+    </ol>
+    <p>Se puede pasar a cualquier tarea del circuito, hacia adelante o hacia atrás, porque cada circuito tiene pasos distintos.
+      El control está en los permisos y en el registro: el motivo, el usuario y la fecha quedan en el historial.
+      Si vuelve a un paso que ya figura en el historial, se muestra la advertencia «Volver a un paso visitado».</p>
+    <p>Un cambio de estado sin cambio de paso, por ejemplo de «En tratamiento» a «Pendiente», no exige motivo.
+      Si escribe en «Observaciones» sin cambiar paso ni estado, el texto se agrega al historial como observación.
+      Los colaboradores ven en esa pantalla el botón «Agregar observación».</p>
+  </section>
+
+  <section id="cierre">
+    <h2>5. Cerrar y reabrir un expediente</h2>
+    <p>Seleccione «Cerrado y Resuelto» o «Cerrado sin Resolución», escriba el motivo y pulse «Guardar».
+      El sistema pide una confirmación antes de cerrar.</p>
+    <ul>
+      <li>Se puede cerrar desde cualquier paso. Se conserva el paso donde ocurrió el cierre.</li>
+      <li>El motivo es obligatorio en los dos cierres. En «Cerrado sin Resolución» indique la causa: desistimiento, improcedencia, duplicado u otra.</li>
+      <li>Después del cierre no se puede cambiar el paso ni el estado, ni eliminar el expediente.</li>
+      <li>Se pueden consultar el historial y el diagrama. El administrador y el área responsable pueden corregir datos descriptivos.</li>
+      <li>Si selecciona el paso «Finalizado», debe combinarlo con uno de los dos estados de cierre.</li>
+      <li>El estado «Finalizado» ya no se usa para cerrar. Los expedientes antiguos que lo tienen siguen cerrados.</li>
+    </ul>
+    <aside><strong>Reapertura.</strong> Solo el administrador puede reabrir un expediente cerrado, desde «Ver diagrama» con el botón «Reabrir expediente».
+      Debe elegir el paso y un estado abierto, e indicar el motivo; la reapertura queda registrada en el historial.</aside>
+  </section>
+
+  <section id="consulta">
+    <h2>6. Buscar, consultar historial y descargar</h2>
+    <p>Use el buscador de la bandeja para localizar expedientes por carátula, solicitante, DNI, domicilio, información adicional o paso.
+      La lista y la exportación respetan su alcance de acceso. El lápiz aparece cuando puede editar los datos; si no, el ojo abre los datos en modo lectura.</p>
+    <ul>
+      <li><strong>Ver Historial:</strong> muestra los movimientos y observaciones registrados, con usuario y fecha.</li>
+      <li><strong>Exportar:</strong> descarga la bandeja filtrada como Excel, hasta 5 000 registros.</li>
+      <li><strong>Descargar BPMN:</strong> obtiene el archivo del circuito.</li>
+      <li><strong>Descargar imagen:</strong> obtiene un PNG del diagrama, incluido el color del paso guardado.</li>
+    </ul>
+    <p>Si no se puede identificar un único elemento del diagrama para el paso guardado, aparecerá un aviso.
+      Consulte el historial y solicite al administrador que revise los nombres de las tareas.</p>
+    <aside><strong>Edición entre varios operadores.</strong> Si otro usuario guardó cambios mientras usted tenía abierto el expediente,
+      el sistema no sobrescribe: avisa que el expediente cambió y le permite recargar la versión actual. En la pantalla de movimientos se conserva lo que escribió en «Observaciones».</aside>
+  </section>
+</article>

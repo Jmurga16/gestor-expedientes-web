@@ -17,6 +17,11 @@
                 ]
             },
             {
+                "label": "Manual de usuario",
+                "icon": "pi pi-fw pi-book",
+                "routerLink": ["/admin/manual"]
+            },
+            {
                 "label": "Cerrar Sesión",
                 "action": "logout",
                 "icon": "pi pi-fw pi-sign-out",
